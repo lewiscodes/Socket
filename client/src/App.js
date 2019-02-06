@@ -1,24 +1,42 @@
 import React, { Component } from 'react'
-import logo from './logo.svg'
-import './App.css'
+import io from 'socket.io-client'
+import { withStyles } from '@material-ui/core/styles'
+
+import Button from '@material-ui/core/Button'
+import TextField from '@material-ui/core/TextField'
+
+const socket = io.connect()
+const styles = theme => ({
+  root: {
+    margin: theme.spacing.unit * 3
+  },
+  textfieldContainer: {
+    display: 'flex'
+  },
+  textfield: {
+    marginRight: theme.spacing.unit
+  }
+})
 
 class App extends Component {
   constructor () {
     super()
 
     this.state = {
-      responseToGet: '',
-      responseToPost: '',
-      responseToPostParams: ''
+      textfield: '',
+      messages: ''
     }
 
-    this.getTest = this.getTest.bind(this)
-    this.postTest = this.postTest.bind(this)
+    this.handleSubmit = this.handleSubmit.bind(this)
   }
 
   componentDidMount () {
     this.postTest()
     this.getTest()
+
+    socket.on('chat message', (message) => {
+      this.setState({messages: message})
+    })
   }
 
   getTest () {
@@ -27,7 +45,7 @@ class App extends Component {
     }).then((response) => {
       if (response.status === 200) return response.json()
     }).then((jsonResponse) => {
-      this.setState({responseToGet: jsonResponse.server})
+      console.log('Response to GET:', jsonResponse.server)
     })
   }
 
@@ -41,36 +59,44 @@ class App extends Component {
     }).then((response) => {
       if (response.status === 200) return response.json()
     }).then((jsonResponse) => {
-      console.log('jsonResponse', jsonResponse.params)
-      this.setState({
-        responseToPost: jsonResponse.server,
-        responseToPostParams: jsonResponse.params
-      })
+      console.log('Response to POST:', jsonResponse.server)
+      console.log('Original Params passed to POST:', jsonResponse.params)
     })
   }
 
+  handleSubmit () {
+    socket.emit('chat', this.state.textfield)
+    this.setState({textfield: ''})
+  }
+
   render () {
+    const { classes } = this.props
+
     return (
-      <div className={'App'}>
-        <header className={'App-header'}>
-          <img src={logo} className={'App-logo'} alt={'logo'} />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className={'App-link'}
-            href={'https://reactjs.org'}
-            target={'_blank'}
-            rel={'noopener noreferrer'}
+      <div className={classes.root}>
+        <span>{this.state.messages}</span>
+        <div className={classes.textfieldContainer}>
+          <TextField
+            className={classes.textfield}
+            placeholder={'Chat here...'}
+            variant={'outlined'}
+            value={this.state.textfield}
+            onChange={(e) => { this.setState({textfield: e.target.value}) }}
+            onKeyPress={(e) => { if (e.key === 'Enter') this.handleSubmit() }}
+          />
+          <Button
+            variant={'contained'}
+            color={'primary'}
+            className={classes.button}
+            size={'large'}
+            onClick={this.handleSubmit}
           >
-            Learn React
-          </a>
-        </header>
-        <p>{this.state.responseToGet}</p>
-        <p>{this.state.responseToPost} The body passed was: "{this.state.responseToPostParams}"</p>
+            Send
+          </Button>
+        </div>
       </div>
     )
   }
 }
 
-export default App
+export default withStyles(styles)(App)
